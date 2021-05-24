@@ -1,7 +1,7 @@
 # POLITICS
 ## Background 🏛
 
-We wanted to explore how the data brokerage industry cashes in on political  advertising.  Since, 2008, online political advertising has become increasingly important, with political campaigns spending tens of billions of dollars each year to push political ads. What do theses data brokers who collaborate with political campaigns know about you?  According to the Washington Post, RNC allegedly has [https://www.washingtonpost.com/technology/2020/10/27/political-campaign-data-targeting/]3000 data points(https://www.washingtonpost.com/technology/2020/10/27/political-campaign-data-targeting/) on every US voter 
+We wanted to explore how the data brokerage industry cashes in on political  advertising.  Since, 2008, online political advertising has become increasingly important, with political campaigns spending tens of billions of dollars each year to push political ads. What do theses data brokers who collaborate with political campaigns know about you?  According to the Washington Post, RNC allegedly has [https://www.washingtonpost.com/technology/2020/10/27/political-campaign-data-targeting/]3000 data points(https://www.washingtonpost.com/technology/2020/10/27/political-campaign-data-targeting/) on every US voter
 
 ![](POLITICS/Screen%20Shot%202021-05-24%20at%202.51.38%20AM.png)(https://www.statista.com/statistics/736971/social-media-ad-spend-usa/#:~:text=Every%20year%20billions%20of%20dollars,and%20applications%20on%20social%20media.)
 

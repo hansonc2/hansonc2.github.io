@@ -1,0 +1,17 @@
+<p>import markdown
+import os</p>
+<p>def convert_all() -&gt; None:
+    '''
+    Convert all markdown files in current directory to html
+    '''
+    for name in os.listdir():
+        with open(name, 'r') as f:
+            text = f.read()
+            html = markdown.markdown(text)</p>
+<pre><code>    with open('html/' + name[:-3] + '.html', 'w') as f:
+        f.write(html)
+</code></pre>
+<p>def main():
+    convert_all()</p>
+<p>if <strong>name</strong> == '<strong>main</strong>':
+    main()</p>
