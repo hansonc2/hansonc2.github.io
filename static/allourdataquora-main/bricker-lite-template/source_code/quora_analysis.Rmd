@@ -1,0 +1,506 @@
+---
+title: "Quora Advertisement and Digest Data Analysis"
+author: "Aishee Mukherji"
+date: "5/7/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, collapse = TRUE, 
+                      warning = FALSE, message = FALSE)
+# installing packages
+library(readr)
+library(dplyr)
+library(stringr)
+library(tidyverse)
+library(lubridate)
+library(ggwordcloud)
+library(tm)
+library(SnowballC)
+library(wordcloud)
+library(RColorBrewer)
+library(tidytext)
+library(lubridate)
+library(udpipe)
+library(textrank)
+library(lattice)
+library(jcolors)
+library(scales)
+library(table1)
+ud_model <- udpipe_download_model(language = "english")
+ud_model <- udpipe_load_model(ud_model$file_model)
+set.seed(122)
+theme_set(theme_bw())
+```
+```{r}
+# Clean data frame
+clean <- function(f) {
+  df <-
+    data.frame(question = str_extract_all(
+      read_file(f),
+      "To:.*.com|Date:.*\r\n|Question:.*\r*\n*.*\\?"
+    )) %>%
+    setNames(c("question")) %>%
+    mutate(question = str_replace_all(question, "To: |Date: |Question: |\r|\n|=", ""))
+  email <- df[1, 1]
+  Timestamp <-
+    dmy_hms(str_extract(df[3, 1], "[0-9]+.* (?=[\\+0000])"), tz = "America/Los_Angeles")
+  date <- date(Timestamp)
+  x <-
+    cbind(data.frame(email, date), question = df %>% tail(length(df) - 4))
+  return(x)
+}
+
+# Create word clouds
+wordcloudmaker <-
+  function(d,
+           grp = NA,
+           words,
+           freq,
+           minfreq = 1,
+           maxwords = 200,
+           scal = c(4, .5)) {
+    if (!is.na(grp)) {
+      dt <- subset(d, group == grp)
+    } else {
+      dt <- d
+    }
+    wordcloud(
+      words = dt[[words]],
+      freq = dt[[freq]],
+      scale = scal,
+      min.freq = minfreq,
+      max.words = maxwords,
+      random.order = FALSE,
+      rot.per = 0.35,
+      colors = brewer.pal(8, "Dark2")
+    )
+  }
+
+
+# Get part of speech specified
+commonPOS <- function(df, grp, pos = "NOUN") {
+  d <- subset(df, group == grp)
+  d[["words"]] <- str_replace_all(d[["words"]], "e2809.", "")
+  stats <-
+    subset(as.data.frame(udpipe_annotate(ud_model, x = d[["words"]])), upos %in% pos)
+  stats <- txt_freq(x = stats$lemma)
+  stats$key <- factor(stats$key, levels = rev(stats$key))
+  stats
+}
+
+# Return p-value for descriptive stats
+pvalue <- function(x, ...) {
+  # Construct vectors of data y, and groups (strata) g
+  y <- unlist(x)
+  g <- factor(rep(1:length(x), times = sapply(x, length)))
+  if (is.numeric(y)) {
+    # For numeric variables, perform a standard 2-sample t-test
+    p <- t.test(y ~ g)$p.value
+  } else {
+    # For categorical variables, perform a chi-squared test of independence
+    p <- chisq.test(table(y, g))$p.value
+  }
+  # Format the p-value, using an HTML entity for the less-than sign.
+  # The initial empty string places the output on the line below the variable label.
+  c("", sub("<", "&lt;", format.pval(p, digits = 3, eps = 0.001)))
+}
+```
+```{r}
+filenames <-
+  list.files("~/RStudio/Comps/healthcompsdata/emails/", full.names = TRUE)
+participants <- data.frame(
+  email = c(
+    "leea5105@gmail.com",
+    "aj8743124@gmail.com",
+    "bryantcarol868@yahoo.com",
+    "cassidybarnes75@gmail.com",
+    "aubreyyates2@gmail.com",
+    "blakeg853@gmail.com"
+  ),
+  group = c(
+    "mood disorder",
+    "schizophrenia",
+    "control",
+    "mood disorder",
+    "schizophrenia",
+    "control"
+  )
+)
+
+quora_ads <- read.csv("quora_ads.csv", na.strings = c("")) %>%
+  pivot_longer(cols = starts_with("ad"),
+               names_to = "ad_number",
+               values_to = "ad") %>%
+  mutate(
+    sponsor = str_extract(ad, ".*"),
+    words = str_extract_all(str_to_lower(ad),  boundary("word")),
+    sponsor_type = case_when(
+      sponsor %in% c(
+        "BHMD",
+        "BHMD Dermal",
+        "Eden Health",
+        "Gundry MD",
+        "System1 | Bladder Cancer",
+        "System1 | Multiple Sclerosis",
+        "System1 | Spinal Muscular Atrophy"
+      ) ~ "Healthcare",
+      sponsor %in% c(
+        "Atlassian",
+        "Avnet",
+        "BairesDev",
+        "CapitalOne Shopping",
+        "ContentFly",
+        "Local Solar Power Programs" ,
+        "ManageEngine",
+        "Network Solutions",
+        "Shopify",
+        "Square Online",
+        "The Motley Fool",
+        "TruthFinder",
+        "Wesley Financial Group, LLC"
+      )  ~ "Selling Product(s)",
+      sponsor %in% c("Forge of Empires", "Gazillions", "Worldlifestyle") ~ "Games Apps & Quizzes",
+      sponsor %in% c("Stansberry Research") ~ "Political",
+      sponsor %in% c(
+        "Best Gadget Advice",
+        "History Daily",
+        "Magellan Times",
+        "Maternity Week",
+        "The Penny Hoarder",
+        "Upbeat News",
+        "Worldlifestyle"
+      ) ~ "News"
+    ),
+    date = mdy(time)
+  )
+
+
+df <- lapply(filenames, clean) %>%
+  bind_rows() %>%
+  inner_join(participants, by = "email") %>%
+  mutate(
+    question = str_remove_all(question, "E28099|\""),
+    topic_breakdown = case_when(
+      str_detect(
+        str_to_lower(question),
+        "disorder|anxiety|mood|bipolar|schizophrenia|bpd|narciss|depression|psycho|why are you sad|traumatic event|truly happy|borderline"
+      ) ~ "mental health",
+      str_detect(
+        str_to_lower(question),
+        "medicine|vaccine|doctor|physician|vitamin c|hospital|health diagnosis|pandemic|blood sugar|push up"
+      ) ~ "general health",
+      str_detect(
+        str_to_lower(question),
+        "food|bread|pizza|meat|steak|vegetables|nutrition|nutrient|sugar|milk|oysters|pasta|oats|breakfast|honey|meal|suya|tuna|onion|dish|eat less|chefs|salt|egg mcmuffin|pork|fruits"
+      ) ~ "food",
+      str_detect(
+        str_to_lower(question),
+        "phone|iphone|technology|tech|computer|c\\+\\+|5g|cryptocurrency|startup|microsoft|linux|cell phone|bot|samsung|spyware|phone|chip production|transistor|screen recorder|batter|blockchain|dogecoin|electric car|purple bullet|cryptos"
+      ) ~ "technology",
+      str_detect(
+        str_to_lower(question),
+        "snapchat|twitter|facebook|instagram|discord|youtube"
+      ) ~ "social media",
+      str_detect(
+        str_to_lower(question),
+        "scientific|science|scientist|drilling|discoveries|periodic table|einstein|inventions|atom|giant egg discovered|oldest living things|bleach|could i survive|electrons"
+      ) ~ "science",
+      str_detect(
+        str_to_lower(question),
+        "music|k-pop|rock star|hard rock|song|bts|studio|rock and roll|rock band|rock|paul mccartney|freddie mercury|john lennon|mick jagger|david crosby|billy|beatles|peter gabriel|bobby mcgee|brian may|composer|michael jackson|singer|heavy metal|good artist"
+      ) ~ "music",
+      str_detect(str_to_lower(question), "book|read|stephen king") ~ "books",
+      str_detect(
+        str_to_lower(question),
+        "movie|lord of the rings|mcu scene|marvel cinematic universe|oscar win"
+      ) ~ "movie",
+      str_detect(str_to_lower(question), "sum of") ~ "math",
+      str_detect(
+        str_to_lower(question),
+        "celebrity|john wayne|prince charles|tom cruise|william shatner|princess diana"
+      ) ~ "celebrity",
+      str_detect(
+        str_to_lower(question),
+        "business|job|employee|switch to product based|market|your boss|good career"
+      ) ~ "business/marketing/jobs",
+      str_detect(
+        str_to_lower(question),
+        "history|henry viii|roswell|challenger astronauts|person of all time|chemical reaction|50s and 60s|jimmy stewar|a human has survived"
+      ) ~ "history",
+      str_detect(
+        str_to_lower(question),
+        "teacher|phd|graduate|school|student|educat|community college"
+      ) ~ "education",
+      str_detect(
+        str_to_lower(question),
+        "my son|parent|daughter|family|kids|child|12 year old"
+      ) ~ "family/children",
+      str_detect(
+        str_to_lower(question),
+        "religion|bible|eckhart tolle|demon|angels|lucifer effect"
+      ) ~ "religion",
+      str_detect(str_to_lower(question), "puppy|dog|cat|pigeon") ~ "animal",
+      str_detect(
+        str_to_lower(question),
+        "it correct to say between|bad handwriting"
+      ) ~ "grammar",
+      str_detect(str_to_lower(question), "money|financ|wealth") ~ "finance",
+      str_detect(str_to_lower(question), "british|usa|uk|country|turkey") ~ "culture/country",
+      str_detect(
+        str_to_lower(question),
+        "military|ar-15|gun|law|cops|legal|police officer|property line|horrific crime "
+      ) ~ "law",
+      str_detect(
+        str_to_lower(question),
+        "mature|romantic|compromising|inappropriate|ruined your life|experience you had|etiquette points|spanking|walked into your home|insane thing|dangerous person|embarrassing moment|trusted your gut|found the one|made you feel sorry|secret life|wedding guest|parked car"
+      ) ~ "other social"
+    ),
+    topic = fct_relevel(
+      case_when(
+        topic_breakdown == "mental health" ~ "Mental Health",
+        topic_breakdown == "general health" ~ "General Health",
+        topic_breakdown == "food" ~ "Food & Nutrition",
+        topic_breakdown == "law" ~ "Law",
+        topic_breakdown %in% c("science", "technology", "social media") ~ "Science, Technology, Sites",
+        topic_breakdown %in% c("books", "movie") ~ "Books & Movies",
+        topic_breakdown %in% c("music", "celebrity") ~ "Music & Celebrities",
+        topic_breakdown %in% c("math", "education", "grammar") ~ "Education",
+        topic_breakdown %in% c("family/children", "other social", "animal") ~ "Society",
+        topic_breakdown %in% c("finance", "business/marketing/jobs") ~ "Business, Jobs, & Finance",
+        topic_breakdown %in% c("history", "religion", "culture/country") ~ "Religion, History, & Culture",
+        TRUE ~ topic_breakdown
+      ),
+      "Mental Health",
+      "General Health",
+      "Food & Nutrition",
+      "Books & Movies",
+      "Music & Celebrities",
+      "Society",
+      "Science, Technology, Sites",
+      "Education",
+      "Religion, History, & Culture",
+      "Business, Jobs, & Finance",
+      "Law"
+    )
+  )
+
+write.csv(participants, file = "participants.csv")
+write.csv(df, file = "quora_digest_out.csv")
+
+q <- quora_ads %>% select(-words)
+write.csv(as.data.frame(q), file = "quora_ads_out.csv")
+```
+
+## Quora Site Advertisements
+
+### Descriptive Statistics
+
+A chi-square test of independence shows that there is no significant difference in the distribution of Quora site advertisement topics or Quora sponsors between the three groups (P>.05).
+
+```{r}
+quora_ads.rmna <- quora_ads %>%
+  filter(!is.na(sponsor_type)) %>%
+  mutate(
+    sponsor = case_when(
+      str_detect(sponsor, "BHMD") ~ "Beverly Hills MD (BHMD)",
+      str_detect(sponsor, "System1") ~ "System1",
+      TRUE ~ sponsor
+    )
+  )
+
+label(quora_ads.rmna$sponsor_type) <- "Quora Site Ad Type"
+label(quora_ads.rmna$sponsor) <- "Quora Site Ad Sponsors"
+
+
+table1(
+  ~ sponsor_type + sponsor |
+    group,
+  data = quora_ads.rmna,
+  overall = F,
+  extra.col = list(`P-value` = pvalue)
+)
+```
+
+### Proportion of each type of Quora advertisement type conditioned on group
+
+Below is a stacked bar chart of the proportion of each advertisement type of Quora newsfeed conditioned on the profile group. There does not appear to be an association in the distribution of ad types between the three different groups.
+
+```{r}
+quora_ads %>%
+  filter(!is.na(sponsor_type)) %>%
+  group_by(group, sponsor_type) %>%
+  summarize(n = n()) %>%
+  ungroup() %>%
+  ggplot(aes(
+    fill = sponsor_type,
+    y = n,
+    x = group,
+    label = n
+  )) +
+  geom_bar(position = "fill", stat = "identity") +
+  coord_flip() +
+  labs(x = "Group",
+       y = "Proportion",
+       fill = "Advertisement Category",
+       title =str_wrap("Stacked bar chart of the proportion of each Quora advertisement type conditioned on study",75),
+       caption = "*Number of questions in each category labeled on chart") +
+  theme(legend.position = "bottom") +
+  geom_text(position = position_fill(vjust = 0.5)) +
+  scale_fill_brewer(palette = "Set3") +
+  guides(fill = guide_legend(ncol = 2))
+
+
+ggsave("quora_ads_bar.png", width = 10, height = 7, units = "in")
+```
+
+
+## Quora Digest Emails
+
+### Descriptive Statistics
+
+A chi-square test of independence shows that there is a significant difference in the distribution of Quora Digest topics between the three groups (P<.001).
+
+```{r}
+label(df$topic) <- "Quora Digest Question Topic"
+table1(
+  ~ topic |
+    group,
+  data = df,
+  overall = F,
+  extra.col = list(`P-value` = pvalue)
+)
+```
+
+
+### Proportion of each type of Quora Digest question topic conditioned on group
+
+Below is a stacked bar chart of the proportion of each Quora Digest email question topic conditioned on the profile group. The distribution in the proportion of each topic appears to differ between the 3 study groups. Profiles from the schizophrenia group received a higher proportion of emails discussing mental health topics than the other two groups. Profiles in the mood disorder group received a larger proportion of emails relating to Science and Technology than the control received, but not more than the Schizophrenia group. Profiles in the control received a larger proportion of topics relating to food and the law than the two psychiatric disorder groups.
+
+```{r}
+digest <- df %>%
+  mutate(words = str_extract_all(str_to_lower(question),  boundary("word"))) %>%
+  unnest(cols = c(words)) %>%
+  mutate(words_rmstop = ifelse(
+    words %in% stopwords("english") |
+      removeNumbers(words) == "",
+    NA,
+    as.character(words)
+  ))
+
+df %>%
+  group_by(group, topic) %>%
+  summarize(n = n()) %>%
+  ungroup() %>%
+  ggplot(aes(
+    fill = topic,
+    y = n,
+    x = group,
+    label = n
+  )) +
+  geom_bar(position = "fill", stat = "identity") +
+  coord_flip() +
+  labs(x = "Group",
+       y = "Proportion",
+       title = str_wrap("Stacked bar chart of the proportion of Quora digest email question type conditioned on study group", 75),
+       fill = "Recommended Question Topic",
+       caption = "*Number of questions in each category labeled on chart") +
+  theme(legend.position = "bottom") +
+  geom_text(position = position_fill(vjust = 0.5))  +
+  scale_fill_brewer(palette = "Set3") +
+  guides(fill = guide_legend(ncol = 3))
+
+ggsave("quora_digest_bar.png", width = 11, height = 7, units = "in")
+```
+
+### Word Clouds 
+
+
+#### Control
+
+A word cloud of all nouns and adjectives with at least a frequency of 2 in the Quora Digest emails of the control.
+
+```{r}
+wordcloudmaker(
+  d = commonPOS(digest, "control", c("NOUN", "ADJ")),
+  words = "key",
+  freq = "freq",
+  scal = c(5, .5),
+  minfreq = 2
+)
+```
+
+#### Mood Disorder
+
+A word cloud of all nouns and adjectives with at least a frequency of 2 in the Quora Digest emails of the Mood Disorder group.
+
+```{r}
+wordcloudmaker(
+  d = commonPOS(digest, "mood disorder", c("NOUN", "ADJ")),
+  words = "key",
+  freq = "freq",
+  scal = c(3.5, .5),
+  minfreq = 2
+)
+```
+
+#### Schizophrenia
+
+A word cloud of all nouns and adjectives with at least a frequency of 2 in the Quora Digest emails of the Schizophrenia group.
+
+```{r}
+wordcloudmaker(
+  d = commonPOS(digest, "schizophrenia", c("NOUN", "ADJ")),
+  words = "key",
+  freq = "freq",
+  scal = c(3, .5),
+  minfreq = 2
+)
+```
+
+### Frequently Used Nouns and Adjectives
+
+On this graph, only words that appeared at least 4 times in at least 1 of our three groups Quora Digest emails are shown.  Notice that words directly alluding to mental health such as “schizophrenia”, “borderline”, “personality”, and “disorder”, are used more frequently in the Quora digest emails sent to schizophrenia profiles compared to mood disorder and the control, who never received emails with these words. Freddie Mercury also appears in Schizophrenia and Mood Disorder, but not as frequently in control.  Book, and interestingly, the word "narcissist", appears in similar frequency in all three groups.  
+
+```{r}
+complete_df <- commonPOS(digest, "control", c("NOUN", "ADJ")) %>%
+  full_join(commonPOS(digest, "mood disorder", c("NOUN", "ADJ")), by = "key") %>%
+  full_join(commonPOS(digest, "schizophrenia", c("NOUN", "ADJ")), by = "key") %>%
+  rename(
+    freq.control = freq.x,
+    freq.md = freq.y,
+    freq.schiz = freq,
+    freq_pct.control = freq_pct.x,
+    freq_pct.md = freq_pct.y,
+    freq_pct.schiz = freq_pct,
+  ) %>%
+  filter(freq.control > 4 | freq.md > 4 | freq.schiz > 4) %>%
+  arrange(desc(freq.control), desc(freq.md), desc(freq.schiz)) %>%
+  pivot_longer(cols = starts_with("freq."),
+               names_to = "group",
+               values_to = "freq")
+
+
+complete_df %>%
+  group_by(key) %>%
+  mutate(total = sum(freq),
+         group = factor(case_when(group == "freq.md" ~ "Mood Disorder",
+                           group == "freq.schiz" ~ "Schizophrenia",
+                           group == "freq.control" ~ "Control"))) %>%
+  ggplot(aes(x = reorder(key, total), y = freq, fill = group))+
+  geom_bar(stat="identity") +
+  coord_flip() +
+  facet_grid(~group) +
+  labs(x = "Nouns and Adjectives",
+       y = "Frequency",
+       fill = "Group",
+       title = str_wrap("Frequency of nouns and adjectives used in Quora Digest emails by study group.",65),
+       caption = "*Only nouns and adjectives with a frequency of at least 4 in one study group are shown.")
+
+ggsave("nounadj.png")
+```
+
+## Appendix: All code for this analysis.
+
+```{r ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+```
