@@ -14,6 +14,17 @@
       <script type="text/javascript" src="static/js/jquery-1.8.3.min.js"></script>
       <script type="text/javascript" src="static/js/jquery-ui.min.js"></script>
       <script type="text/javascript" src="static/js/validation.js"></script>
+      <style>
+div.full-width {position:relative;float:left;width:100%;}
+@media screen
+and (min-width: 751px), screen and (min-device-width:751) {
+div.video {position:relative;float:left;padding:5px;width:50%;}
+iframe {width:100%;}
+}
+
+
+}
+</style>
    </head>
 
    <body class="size-1140">
@@ -23,46 +34,48 @@
         <nav class="m-12 grid margin-bottom">
            <!-- logo -->
            <a href="index.html" class="m-12 l-3 padding">
-              <img src="static/img/logo.svg">
+              <img src="static/img/logo2.png" style="width:150px;" />
            </a>
            <div class="top-nav s-12 l-9">
               <ul class="top-ul right chevron">
                 <li><a href="index.html">Home</a></li>
                 <li><a href="health.html">Health</a></li>
-                <li><a href="politics.html">politics</a></li>
+                <li><a href="politics.html">Politics</a></li>
               </ul>
            </div>
         </nav>
       </header>
 
       <!-- MAIN -->
-      <!-- MAIN -->
       <main role="main">
         <section class="grid box margin-bottom">
           <h1>ALL OUR DATA</h1>
           <h2>About 📌</h2>
           <p>“All Our Data” is a project exploring data, data privacy, and the data brokerage industry. The data brokerage industry includes larger advertisements, political persuasion, and manipulation and discrimination for profit. On the other hand, sharing of data also has its benefits in scientific advancement and contact tracing to prevent viral spread. While you sometimes have the option to view data being collected on you, the data is often obfuscated, incomplete, or otherwise unclear, which leads to a serious lack of transparency. Furthermore, the mechanisms of this data brokering process (who is doing it, what are they collecting, how are they collecting it, and how is the collected data used) are largely unknown to the everyday user, and as the industry remains intentionally opaque. Recently, laws have begun attempts to regain some transparency about data collected (e.g., California Consumer Act, Vermont 2018, etc.), but are these sufficient? Our goal is to learn about the data brokerage industry, the data that is collected, what data is collected, who ultimately gets our data and how, and how our data is used (or misused). What are the benefits and downsides of data brokering, who is targeted, and how can the data being collected on us be made more accessible, transparent, or easier to understand?</p>
-          <p>https://www.youtube.com/watch?v=hfpgWvJTSSc</p>
+
+          <h3><a href="https://youtu.be/aWYbuhEr--E">View Our Full Presentation Here</a></h3>
+          <h3><a href="https://youtu.be/UK2ZNlHGuB0">View Our 3 Minute Trailer ("Flash Talk") Here</a></h3>
+
+          <div class="full-width">
+            <div class="video"><iframe width="560" height="315" src="https://www.youtube.com/embed/aWYbuhEr--E" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>
+            <div class="video"><iframe width="560" height="315" src="https://www.youtube.com/embed/UK2ZNlHGuB0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>
+          </div>
+
           <h2>Experimentation 🧪</h2>
           <h3>Goals 📋</h3>
           <p>Our primary questions of interest are (1) who is collecting our data, (2) what are they collecting, (3) how do they collect data, (4) how is our collected data being used, (5) how can we increase transparency about the data collected from us, and (6) how can we simulate targeted advertising? We will conduct our research by constructing digital personas with the goal of emulating real personalities with social media accounts (Google, Quora, YouTube, etc.). We construct these digital personas with control variables and simulate realistic user behavior. Finally, we receive advertisements served to our respective personas, and analyze differences between experiment and control group personas. In pursuit of learning more about where our data goes, we investigated trackers on popular websites and apps to analyze where our data is sent.</p>
           <h3>Tools 🔨</h3>
-          <p>O perform these experiments, we use a variety of software tools. First,  t. We also use [https://github.com/tadatitam/info-flow-experiments]AdFisher(https://github.com/tadatitam/info-flow-experiments), an open-source, web automation, data collection tool designed by researchers at Carnegie Mellon, and adapted for our experiments. Finally we use MITMroxy, an open source proxy, packet interception tool and Blacklight,  a real-time web privacy inspector and tracker finder.  </p>
+          <p>To perform these experiments, we used a variety of software and coding tools (e.g., R, Python3). We also used <a href="https://github.com/tadatitam/info-flow-experiments">AdFisher</a>, an open-source, web automation, data collection tool designed by researchers at Carnegie Mellon, and adapted for our experiments. Finally we used MITMproxy, an open source proxy, packet interception tool and Blacklight, a real-time web privacy inspector and tracker finder.</p>
           <h2>Research 📊</h2>
           <p>We used our experimental framework to answer questions about targeted advertising relating to mental health, political affiliation, and data leakage. </p>
-          <p><em>See more below</em></p>
-          <blockquote>
-          <blockquote>
-          <blockquote>
-          <blockquote>
-          <blockquote>
-          <p>[politics.html]Politics(https://github.com/tadatitam/info-flow-experiments) &lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;
-          [health.html]Health(https://github.com/tadatitam/info-flow-experiments) &lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;</p>
-          </blockquote>
-          </blockquote>
-          </blockquote>
-          </blockquote>
-          </blockquote>
+          <h3> See how advertisers target your:</h3>
+          <ul>
+            <li><a href="HEALTH.html">Mental Health</a></li>
+            <li><a href="POLITICS.html">Political Affiliation</a></li>
+          </ul>
+          <h2>Team Members 👥</h2>
+          <p>Aishee Mukherji, Cole Hanson, Eric Odoom, Jeffrey Boitnott, Yasmeen Awad</p>
+          <p>Computer Science, Class of 2021</p>
       </section>
 
       </main>
@@ -72,9 +85,8 @@
       <!-- FOOTER -->
       <footer class="grid box">
         <div class="s-12 text-center margin-bottom">
-          <p>Copyright 2019, Vision Design - graphic zoo</p>
-          <p>All images have been purchased from Bigstock. Do not use the images in your website.</p>
-          <p><a href="http://www.myresponsee.com" title="Responsee - lightweight responsive framework">Design and coding by Responsee Team</a></p>
+          <p>Copyright 2021, Aishee Mukherji, Cole Hanson, Eric Odoom, Jeffrey Boitnott, Yasmeen Awad</p>
+          <p>Permission required to use content on this site.</p>
         </div>
       </footer>
       <script type="text/javascript" src="static/js/responsee.js"></script>
@@ -86,7 +98,8 @@
             nav: true,
             dots: true,
             items: 1,
-            loop: true,
+      
+      loop: true,
             navText: ["&#xf007","&#xf006"],
             autoplay: true,
             autoplayTimeout: 3000
